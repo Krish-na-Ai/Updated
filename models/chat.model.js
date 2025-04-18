@@ -3,8 +3,8 @@ const mongoose = require("mongoose");
 const messageSchema = new mongoose.Schema({
   sender: { type: String, enum: ["user", "ai"], required: true },
   content: { type: String, required: true },
-  embedding: { type: [Number] },  // Vector embedding for messages
-  fileRefs: [{                    // References to uploaded files
+  embedding: { type: [Number], required: false }, // Make optional
+  fileRefs: [{
     fileId: { type: mongoose.Schema.Types.ObjectId, ref: "File" },
     fileName: { type: String }
   }],

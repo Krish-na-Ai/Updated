@@ -2,7 +2,7 @@ const Chat = require("../models/chat.model");
 const File = require("../models/file.model");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { generateEmbedding, findRelevantChunks, generateSummary } = require("../utils/embedding-utils");
-
+require("dotenv").config();
 // Initialize Google Generative AI with API key
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -37,19 +37,29 @@ exports.sendMessage = async (req, res) => {
       }));
     }
 
-    // Generate embedding for the user message
-    const messageEmbedding = await generateEmbedding(message);
-
+    let messageEmbedding = [];
+    try {
+      messageEmbedding = await generateEmbedding(message);
+    } catch (err) {
+      console.warn("Embedding generation failed, continuing without embedding:", err.message);
+      // Continue without embedding - it won't be vector searchable but chat will work
+    }
+    
     // Add user message to the chat history
     chat.messages.push({ 
       sender: "user", 
       content: message,
-      embedding: messageEmbedding,
+      embedding: messageEmbedding.length ? messageEmbedding : undefined,
       fileRefs: fileReferences
     });
     
     // For first message, we'll generate a title later
     const isFirstMessage = chat.messages.length === 1;
+    
+
+    if (isFirstMessage) {
+      chat.title = message.substring(0, 50);
+    }
     
     await chat.save();
 
@@ -246,6 +256,7 @@ exports.sendMessage = async (req, res) => {
 };
 
 // Function to get relevant messages from chat history
+// In controllers/gemini.controller.js - getRelevantMessages function
 async function getRelevantMessages(chat, query) {
   try {
     // If no messages or only a few, no need for retrieval
@@ -258,9 +269,13 @@ async function getRelevantMessages(chat, query) {
       .slice(0, -5)
       .filter(msg => msg.embedding && msg.embedding.length > 0);
     
-    // If no embeddings, check summaries
+    // If no embeddings, use recent messages as context instead of retrieval
     if (messagesWithEmbeddings.length === 0) {
-      return await getRelevantSummaries(chat, query);
+      const recentContextMessages = chat.messages
+        .slice(Math.max(0, chat.messages.length - 10), -5)
+        .map(msg => `${msg.sender.toUpperCase()}: ${msg.content}`)
+        .join('\n\n');
+      return recentContextMessages;
     }
     
     // Find relevant messages
@@ -282,7 +297,6 @@ async function getRelevantMessages(chat, query) {
     return ""; // Return empty string on error
   }
 }
-
 // Function to get relevant summaries
 async function getRelevantSummaries(chat, query) {
   try {
@@ -348,7 +362,7 @@ exports.sendImageMessage = async (req, res) => {
     
     // Get Gemini vision model
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       generationConfig: {
         temperature: 0.7,
         topK: 40,

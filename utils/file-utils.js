@@ -4,6 +4,7 @@ const multer = require('multer');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pdfParse = require('pdf-parse');
 const sharp = require('sharp');
+require('dotenv').config();
 
 // Initialize Google Generative AI with API key
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
