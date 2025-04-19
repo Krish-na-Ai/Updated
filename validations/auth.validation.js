@@ -21,7 +21,7 @@ const signupSchema = Joi.object({
 
   confirmPassword: Joi.string()
     .valid(Joi.ref('password'))
-    .required()
+    .optional()
     .messages({ "any.only": "Passwords do not match" }),
 
   name: Joi.string().min(2).max(50).required()
@@ -29,7 +29,7 @@ const signupSchema = Joi.object({
 
   phone: Joi.string()
     .pattern(/^(\+\d{1,3}[- ]?)?\d{10,14}$/)
-    .required()
+    .optional()
     .messages({
       "string.pattern.base": "Please enter a valid phone number (10-14 digits with optional country code)"
     })
